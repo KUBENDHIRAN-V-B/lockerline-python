@@ -1,0 +1,66 @@
+:root { --bg:#f6f5f2; --panel:#fff; --ink:#1c1b19; --ink2:#4a4844; --muted:#7a776f; --line:#e3e0d9;
+        --free:#dff3e4; --hold:#fde9c5; --sunk:#f1efe9; --mark:#8a4b08; --ok:#1f7a3f; --bad:#b3261e; --mono:ui-monospace,Menlo,Consolas,monospace; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+.wrap { max-width:1000px; margin:0 auto; padding:0 16px; }
+.top { background:var(--panel); border-bottom:1px solid var(--line); padding:16px 0 10px; }
+h1 { margin:0; font-size:22px; } h2 { margin:18px 0 4px; font-size:19px; } h3 { margin:16px 0 6px; font-size:15px; }
+.sub { margin:2px 0 10px; color:var(--ink2); }
+nav button { border:1px solid var(--line); background:var(--panel); padding:6px 12px; border-radius:8px; margin:0 6px 6px 0; cursor:pointer; }
+nav button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+.screen { display:none; } .screen.on { display:block; }
+.muted { color:var(--muted); }
+.row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:8px 0; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:10px 0; }
+.card.ok { border-color:var(--ok); } .card.no { border-color:var(--bad); }
+.card label { display:block; margin:6px 0; } .card input, .card select, .row input, .row select { padding:6px 8px; border:1px solid var(--line); border-radius:6px; font:inherit; }
+button[type=submit] { background:var(--ink); color:#fff; border:0; padding:8px 14px; border-radius:8px; cursor:pointer; margin-top:6px; }
+.grid { display:grid; grid-template-columns:repeat(8, 1fr); gap:6px; margin-top:8px; }
+.door { border:1px solid var(--line); border-radius:8px; padding:8px 6px; text-align:center; background:var(--free); font-family:var(--mono); font-size:12px; cursor:pointer; }
+.door.holding { background:var(--hold); }
+.door b { display:block; font-size:13px; } .door small { color:var(--ink2); }
+.tbl { width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--line); border-radius:10px; }
+.tbl th, .tbl td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); font-size:14px; vertical-align:top; }
+.tbl th { font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+code, pre { font-family:var(--mono); font-size:12.5px; }
+.wire { margin:24px 0; background:#1e1d1a; color:#e8e6e0; border-radius:10px; padding:10px 14px; }
+.wire h3 { margin:0 0 6px; color:#bdb8ad; font-size:12px; letter-spacing:.06em; text-transform:uppercase; }
+.wire pre { margin:0; white-space:pre-wrap; }
+.code { font-family:var(--mono); font-size:28px; letter-spacing:.2em; color:var(--mark); margin:4px 0; }
+.dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#aaa; margin-right:6px; }
+.dot.up { background:var(--ok); } .dot.down { background:var(--bad); }
+dl { margin:0; } dt { font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-top:8px; } dd { margin:0; }
+.timeline li { margin:4px 0; } .timeline time { font-family:var(--mono); color:var(--muted); margin-right:8px; }
+
+/* walkthrough: one ticket at a time, on top of the screens it built */
+nav .walkbtn { border-color:var(--mark); color:var(--mark); }
+nav .walkbtn.on { background:var(--mark); border-color:var(--mark); color:#fff; }
+.walk { background:var(--panel); border:2px solid var(--mark); border-radius:12px; padding:14px 16px 12px; margin:14px 0 6px; }
+.walkhead { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+.walknav button { border:1px solid var(--line); background:var(--panel); padding:5px 10px; border-radius:8px; margin-left:6px; cursor:pointer; }
+.walknav button:disabled { opacity:.4; cursor:default; }
+.walkid { font-family:var(--mono); color:var(--mark); font-size:12.5px; margin-top:8px; }
+.walk h2 { margin:2px 0 4px; }
+.walk .scene { margin:0 0 10px; color:var(--ink); }
+.walkus { background:var(--sunk); border-radius:8px; padding:8px 11px; margin:8px 0; }
+.walkus b { color:var(--mark); }
+.walktry { border-left:4px solid var(--mark); padding:8px 12px; margin:10px 0; background:#fff8ee; border-radius:0 8px 8px 0; }
+.walktry .lbl { font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.walktry p { margin:3px 0 6px; }
+.walktry button { background:var(--mark); color:#fff; border:0; padding:6px 12px; border-radius:8px; cursor:pointer; }
+.walkdl dt { font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-top:10px; }
+.walkdl dd { margin:2px 0 0; color:var(--ink2); }
+.walkdet { margin-top:10px; border-top:1px solid var(--line); padding-top:8px; }
+.walkdet summary { cursor:pointer; font-weight:600; font-size:14px; }
+.walkdet ul { margin:6px 0 0; padding-left:18px; color:var(--ink2); font-size:13.5px; }
+.walkdet .ep { background:var(--sunk); border-radius:8px; padding:8px 10px; margin:8px 0; font-size:13px; }
+.walkdet .ep .sig { font-family:var(--mono); } .walkdet .ep .sig b { color:var(--mark); }
+.walkdet .ep pre { margin:6px 0; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:6px 8px; overflow-x:auto; }
+.walkdet table.ac td:first-child { font-family:var(--mono); color:var(--muted); white-space:nowrap; }
+.walkdet table.ac td.st { font-family:var(--mono); white-space:nowrap; }
+.walkdet table.ac td.st.ok { color:var(--ok); } .walkdet table.ac td.st.no { color:var(--bad); }
+.tag { display:inline-block; font-family:var(--mono); font-size:11px; color:var(--mark); border:1px solid var(--mark); border-radius:999px; padding:0 7px; margin-left:6px; vertical-align:middle; cursor:pointer; }
+.tag:hover { background:var(--mark); color:#fff; }
+.tbl tr.moved { background:var(--hold); }
+.row button { border:1px solid var(--line); background:var(--panel); padding:6px 12px; border-radius:8px; cursor:pointer; }
+.card pre { background:var(--sunk); border-radius:6px; padding:8px 10px; overflow-x:auto; white-space:pre; }

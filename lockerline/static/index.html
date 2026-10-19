@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LockerLine</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>LockerLine</h1>
+    <p class="sub">A bank of 48 parcel lockers: couriers drop, residents collect with a code that expires.</p>
+    <nav id="nav">
+      <button data-screen="wall" class="on">The wall</button>
+      <button data-screen="drop">Drop</button>
+      <button data-screen="collect">Collect</button>
+      <button data-screen="parcel">Parcel</button>
+      <button data-screen="rules">Rule book</button>
+      <button data-screen="api">API</button>
+      <button data-screen="runtime">Runtime</button>
+      <button id="walkbtn" class="walkbtn">Walkthrough</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section id="walk" class="walk" hidden>
+  <div class="walkhead">
+    <span class="muted" id="walkpos"></span>
+    <span class="walknav"><button id="walkprev">← Previous</button><button id="walknext">Next →</button><button id="walkclose">Close</button></span>
+  </div>
+  <div class="walkid" id="walkid"></div>
+  <h2 id="walktitle"></h2>
+  <p class="scene" id="walkscene"></p>
+  <div class="walkus" id="walkus"></div>
+  <div class="walktry" id="walktry"></div>
+  <dl class="walkdl">
+    <dt>What you build</dt><dd id="walkbuild"></dd>
+    <dt>Why it follows</dt><dd id="walkfollows"></dd>
+  </dl>
+  <details class="walkdet"><summary>Backend contract — endpoints, storage and rules</summary><div id="walkcontract"></div></details>
+  <details class="walkdet" open><summary>Acceptance — as the end user sees it</summary><div id="walkacuser"></div></details>
+  <details class="walkdet"><summary>Acceptance — at the API and database</summary><div id="walkacapi"></div></details>
+  <details class="walkdet"><summary>Definition of done</summary><div id="walkdone"></div></details>
+</section>
+
+<section id="wall" class="screen on">
+  <h2>The wall</h2>
+  <p class="muted">Forty-eight doors. Green is free, amber is holding. Click a door to read it; a holding door links to its parcel.</p>
+  <div class="row">
+    <select id="fsize"><option value="">All sizes</option><option value="S">Small</option><option value="M">Medium</option><option value="L">Large</option></select>
+    <select id="fstate"><option value="">Free or holding</option><option value="free">Free</option><option value="holding">Holding</option></select>
+    <span id="wallcount" class="muted"></span>
+  </div>
+  <div id="grid" class="grid"></div>
+  <div id="doorcard" class="card" hidden></div>
+</section>
+
+<section id="drop" class="screen">
+  <h2>Book a door</h2>
+  <p class="muted">The courier gives the parcel size and the flat. The wall picks the lowest free door of that size.</p>
+  <form id="dropform" class="card">
+    <label>Size <select name="size_class"><option value="S">Small</option><option value="M" selected>Medium</option><option value="L">Large</option></select></label>
+    <label>Flat <input name="flat" value="302" required></label>
+    <button type="submit">Book a door</button>
+  </form>
+  <div id="dropok" class="card ok" hidden></div>
+  <div id="dropno" class="card no" hidden></div>
+</section>
+
+<section id="collect" class="screen">
+  <h2>Collect</h2>
+  <p class="muted">The resident keys the six-digit code. It opens its door once, inside the free window.</p>
+  <form id="pickform" class="card">
+    <label>Code <input name="code" pattern="\d{6}" maxlength="6" required placeholder="482913"></label>
+    <button type="submit">Open the door</button>
+  </form>
+  <div id="pickok" class="card ok" hidden></div>
+  <div id="pickno" class="card no" hidden></div>
+</section>
+
+<section id="parcel" class="screen">
+  <h2>One parcel</h2>
+  <form id="parcelform" class="row">
+    <label>Parcel id <input name="parcel_id" placeholder="P001"></label>
+    <button type="submit">Open</button>
+  </form>
+  <div id="parcelcard" class="card" hidden></div>
+</section>
+
+<section id="rules" class="screen">
+  <h2>Rule book</h2>
+  <div class="card">
+    <dl id="settings"></dl>
+  </div>
+  <h3>When the wall says no</h3>
+  <table class="tbl">
+    <tr><th>Status</th><th>Type</th><th>When</th></tr>
+    <tr><td>400</td><td>/errors/no-such-flat</td><td>the flat does not exist in this tower</td></tr>
+    <tr><td>422</td><td>/errors/validation</td><td>the body fails validation; <code>errors[]</code> names each field</td></tr>
+    <tr><td>409</td><td>/errors/no-door-free</td><td>no free door of that size; <code>free_sizes</code> lists the sizes that are free</td></tr>
+    <tr><td>409</td><td>/errors/code-used</td><td>the code has already opened its door once</td></tr>
+    <tr><td>404</td><td>/errors/no-such-code</td><td>the code does not exist in this tower</td></tr>
+    <tr><td>404</td><td>/errors/code-expired</td><td>the code exists but its window has passed</td></tr>
+  </table>
+  <h3>The rule table</h3>
+  <p class="muted">The rows of <code>tests/rules.csv</code>, which the test suite runs at both windows (a test keeps this copy equal to the file). Pick a window to see which rows change — only the ones tagged <code>window</code> move.</p>
+  <div class="row"><label>Free window <select id="rulewindow"><option value="48">48 hours</option><option value="24">24 hours</option></select></label></div>
+  <table class="tbl" id="ruletable"></table>
+</section>
+
+<section id="api" class="screen">
+  <h2>API</h2>
+  <p class="muted">Every call the wall answers, from the live OpenAPI spec. Send calls it with a sample body; the answer lands in the wire panel below. Full docs at <a href="/docs">/docs</a>.</p>
+  <table class="tbl" id="endpoints"></table>
+</section>
+
+<section id="runtime" class="screen">
+  <h2>Runtime</h2>
+  <div class="card">
+    <p><span id="healthdot" class="dot"></span> <span id="healthtext">checking…</span></p>
+    <p class="muted" id="runtimeline"></p>
+  </div>
+  <h3>How it runs</h3>
+  <div class="card">
+    <p>The image is built from the Dockerfile you write.</p>
+    <p>Build it, then run it with the database on a named volume and every setting from the env-file (copy <code>.env.example</code> to <code>.env</code>):</p>
+<pre>docker build -t lockerline .
+docker run -d --name lockerline -p 8080:8080 -v lockerline-data:/data --env-file .env lockerline</pre>
+  </div>
+  <h3>Restart the container</h3>
+  <div class="card">
+    <p class="muted">This page cannot restart the container itself. Press <b>Before restart</b>, run the two commands in a terminal, wait for the health dot, then press <b>After restart</b>: it compares the holding doors and their parcel ids with the ones saved before.</p>
+    <div class="row"><button type="button" id="beforerestart">Before restart</button><button type="button" id="afterrestart">After restart</button></div>
+<pre>docker rm -f lockerline
+docker run -d --name lockerline -p 8080:8080 -v lockerline-data:/data --env-file .env lockerline</pre>
+    <div id="restartresult" class="muted"></div>
+  </div>
+</section>
+
+<aside class="wire">
+  <h3>Last response on the wire</h3>
+  <pre id="wire">—</pre>
+</aside>
+
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>

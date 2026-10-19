@@ -1,0 +1,1006 @@
+{
+ "project": "A bank of 48 parcel lockers in an apartment block: couriers drop, residents collect with a code that expires.",
+ "level": "LockerLine",
+ "steps": [
+  {
+   "id": "B-01",
+   "title": "Forty-eight doors, and a wall you can look at",
+   "scene": "Farida has run the parcel room out of a spiral notebook for six years. Twenty small doors, twenty medium, eight large. The notebook is the only thing that knows which of them are free.",
+   "build": "Load the doors and residents once at start-up from a settings object, and serve a wall that can be read and filtered by size and by free-or-holding — where free is derived from what is inside the door, never stored as a flag that can disagree with the parcels.",
+   "follows": "Nothing can happen until the place exists.",
+   "story": {
+    "as": "caretaker",
+    "want": "see every one of the 48 doors with its size and whether it is holding something",
+    "so": "I can answer 'is there space' without walking the lobby"
+   },
+   "summary": "The app starts with the 48 doors and the residents loaded once, and answers a filterable wall.",
+   "endpoints": [
+    {
+     "m": "GET",
+     "p": "/towers/{tower}/doors",
+     "q": "size=S|M|L (optional) · state=free|holding (optional)",
+     "req": null,
+     "res": {
+      "tower": "A",
+      "free": 34,
+      "doors": [
+       {
+        "no": "D01",
+        "size": "S",
+        "state": "free"
+       },
+       {
+        "no": "D21",
+        "size": "M",
+        "state": "holding",
+        "parcel_id": "P004",
+        "dwell_seconds": 12600
+       }
+      ]
+     },
+     "codes": [
+      [
+       "200",
+       "",
+       "always, possibly an empty list"
+      ],
+      [
+       "400",
+       "",
+       "unknown `size` or `state` value — /errors/validation"
+      ],
+      [
+       "404",
+       "",
+       "unknown tower — /errors/no-such-tower"
+      ]
+     ]
+    },
+    {
+     "m": "GET",
+     "p": "/towers/{tower}/doors/{no}",
+     "q": null,
+     "req": null,
+     "res": {
+      "no": "D21",
+      "size": "M",
+      "state": "holding",
+      "parcel_id": "P004",
+      "flat": "302",
+      "dwell_seconds": 12600
+     },
+     "codes": [
+      [
+       "200",
+       "",
+       "the door exists"
+      ],
+      [
+       "404",
+       "",
+       "no such door in this tower"
+      ]
+     ]
+    }
+   ],
+   "data": [
+    "towers(id, code, name) — one row, code 'A'",
+    "doors(id, tower_id, no, size_class S|M|L, current_parcel_id nullable) — 20 S, 20 M, 8 L",
+    "residents(id, tower_id, flat, name) — loaded from seed/residents.csv",
+    "seed files: seed/doors.csv, seed/residents.csv, read once at start-up"
+   ],
+   "rules": [
+    "A door is `free` when current_parcel_id is null and `holding` otherwise. State is derived on read — there is no stored flag.",
+    "Seeding runs before the server accepts its first request and is idempotent: a second start-up does not duplicate rows.",
+    "Settings come from one settings object read at start-up (database path, free window hours, host, port); nothing is hard-coded.",
+    "Filters are validated: a value outside the enum is 400, not an empty list.",
+    "Filters are typed query parameters bound to enums; every response goes through a declared response model (no bare dicts)."
+   ],
+   "ac_user": [
+    [
+     "the app has just started",
+     "I open the wall",
+     "I see 48 doors — 20 small, 20 medium, 8 large — every one of them free"
+    ],
+    [
+     "the wall is open",
+     "I filter to large",
+     "I see exactly 8 doors and the count says how many of those are free"
+    ],
+    [
+     "I restart the app",
+     "I open the wall",
+     "the same 48 doors are there once, not 96"
+    ]
+   ],
+   "ac_api": [
+    [
+     "a fresh database",
+     "the app starts",
+     "doors has 48 rows and residents has every row of the CSV, and starting again leaves both counts unchanged"
+    ],
+    [
+     "48 doors",
+     "GET /towers/A/doors",
+     "200 with 48 items, each with no, size and state, and `free` = 48"
+    ],
+    [
+     "a door holding a parcel",
+     "GET /towers/A/doors?state=holding",
+     "only that door, with parcel_id and dwell_seconds"
+    ],
+    [
+     "any request",
+     "GET /towers/A/doors?size=XL",
+     "400 problem+json with type /errors/validation"
+    ],
+    [
+     "any request",
+     "GET /towers/A/doors/D99",
+     "404 problem+json with type /errors/no-such-door"
+    ]
+   ],
+   "done": [
+    "Both endpoints answer as specified, with the filter and both refusals.",
+    "Start-up seeds once and is idempotent — covered by a test that starts twice.",
+    "No stored `state` column exists on doors.",
+    "The wall screen renders from these two endpoints with no other data source."
+   ],
+   "try": {
+    "screen": "wall",
+    "do": "Use the size and state filters on the wall and count: twenty small, twenty medium, eight large. Then click a door.",
+    "see": "48 doors, all free. The count line reads 'N shown · F free': F is the `free` field of GET /towers/A/doors and counts the doors the filters left. Clicking a door reads it from GET /towers/A/doors/{no}. There is no `state` column anywhere — a door is holding when a parcel sits in it, free otherwise."
+   }
+  },
+  {
+   "id": "B-02",
+   "title": "A courier asks for a door",
+   "scene": "Imran arrives with eleven parcels and a flat number written on each. He does not care which door he gets; he cares that the app answers before the lift does.",
+   "build": "A drop endpoint taking a size class and a flat number through a request model with real constraints, answering 201 with the door it chose — and telling a malformed body (422) apart from a flat that does not exist (400).",
+   "follows": "The wall is readable; this is the first thing that changes it, which is why validation has to land here.",
+   "story": {
+    "as": "courier",
+    "want": "book a parcel in by size and flat number and be given a door",
+    "so": "I can drop eleven parcels without deciding anything myself"
+   },
+   "summary": "A courier books a drop by size and flat and is answered with the door that was chosen.",
+   "endpoints": [
+    {
+     "m": "POST",
+     "p": "/drops",
+     "q": null,
+     "req": {
+      "size_class": "M",
+      "flat": "302"
+     },
+     "res": {
+      "parcel_id": "P017",
+      "door": "D22",
+      "size_class": "M",
+      "flat": "302",
+      "dropped_at": "2026-09-25T13:10:00Z"
+     },
+     "codes": [
+      [
+       "201",
+       "",
+       "a door was chosen; `Location: /parcels/P017`"
+      ],
+      [
+       "400",
+       "/errors/no-such-flat",
+       "the flat does not exist in this tower"
+      ],
+      [
+       "422",
+       "/errors/validation",
+       "the body fails validation; `errors[]` names each field"
+      ],
+      [
+       "409",
+       "/errors/no-door-free",
+       "no free door of that size; `free_sizes` lists the sizes that are free"
+      ]
+     ]
+    },
+    {
+     "m": "GET",
+     "p": "/parcels/{parcel_id}",
+     "q": null,
+     "req": null,
+     "res": {
+      "parcel_id": "P017",
+      "door": "D22",
+      "size_class": "M",
+      "flat": "302",
+      "state": "holding",
+      "dropped_at": "2026-09-25T13:10:00Z"
+     },
+     "codes": [
+      [
+       "200",
+       "",
+       "the parcel exists"
+      ],
+      [
+       "404",
+       "/errors/no-such-parcel",
+       ""
+      ]
+     ]
+    }
+   ],
+   "data": [
+    "parcels(id, tower_id, flat, size_class, door_id, dropped_at, collected_at nullable, state holding|collected)",
+    "doors.current_parcel_id is set in the same transaction"
+   ],
+   "rules": [
+    "`size_class` must be one of S, M, L; `flat` must match a resident in this tower.",
+    "The door chosen is a free door of exactly the parcel's size class, lowest door number first.",
+    "If no door of that size is free, refuse with 409 /errors/no-door-free and list `free_sizes`.",
+    "Choosing the door and creating the parcel happen in one transaction; a failure leaves neither.",
+    "The request model uses `Field` constraints; a body that fails them is 422, a body that passes but asks for something impossible is 400 — two different types, tested separately."
+   ],
+   "ac_user": [
+    [
+     "medium doors are free",
+     "I book a medium parcel for flat 302",
+     "I am told the door number and the wall shows that door holding"
+    ],
+    [
+     "I type a flat that does not exist",
+     "I book",
+     "I am told the flat is unknown and nothing changes on the wall"
+    ],
+    [
+     "every large door is holding",
+     "I book a large parcel",
+     "I am refused and told which sizes are free instead"
+    ]
+   ],
+   "ac_api": [
+    [
+     "a free medium door",
+     "POST /drops {size_class:'M', flat:'302'}",
+     "201 with parcel_id and door, a Location header, and that door's current_parcel_id is set"
+    ],
+    [
+     "flat 999 does not exist",
+     "POST /drops {size_class:'M', flat:'999'}",
+     "400 /errors/no-such-flat and no parcel row was written"
+    ],
+    [
+     "a body with size_class 'XL'",
+     "POST /drops",
+     "422 with `errors[]` naming size_class"
+    ],
+    [
+     "no large door free",
+     "POST /drops {size_class:'L', ...}",
+     "409 /errors/no-door-free with free_sizes containing only the sizes that have a free door"
+    ]
+   ],
+   "done": [
+    "POST /drops creates a parcel and takes exactly one door in one transaction.",
+    "All four responses are produced and documented.",
+    "A test proves the transaction: a failure after the parcel insert leaves no parcel and no held door."
+   ],
+   "try": {
+    "screen": "drop",
+    "do": "Book a medium parcel for flat 302. Then book one for flat 999. Then book large parcels until the ninth is refused.",
+    "see": "The first drop takes D21 — the lowest free medium door. Flat 999 is a 400 no-such-flat (a valid body, an unknown flat). The ninth large parcel is a 409 no-door-free with `free_sizes`. The wire panel shows each raw answer."
+   }
+  },
+  {
+   "id": "B-03",
+   "title": "The code that dies at midnight",
+   "scene": "Mrs Rao is at her sister's until Sunday. The code she was given on Thursday should not still open door D22 next month.",
+   "build": "Issue a one-time code, store it hashed, compare it in constant time, and expire it against a free window read from an injected clock instead of the system time — so a test can move time rather than sleep through it.",
+   "follows": "A parcel now sits in a door. Without an expiry nothing ever comes out of it; without an injected clock the expiry can never be tested. Every time-based rule depends on this one dependency.",
+   "story": {
+    "as": "resident",
+    "want": "get a pickup code that stops working after the free window",
+    "so": "a code read over my shoulder last week cannot open my door today"
+   },
+   "summary": "Every drop issues a one-time pickup code that expires, and time comes from an injected clock.",
+   "endpoints": [
+    {
+     "m": "POST",
+     "p": "/drops",
+     "q": null,
+     "req": {
+      "size_class": "M",
+      "flat": "302"
+     },
+     "res": {
+      "parcel_id": "P017",
+      "door": "D22",
+      "size_class": "M",
+      "flat": "302",
+      "dropped_at": "2026-09-25T13:10:00Z",
+      "code": "482913",
+      "expires_at": "2026-09-27T13:10:00Z"
+     },
+     "codes": [
+      [
+       "201",
+       "",
+       "as the drop answer, now with `code` and `expires_at`"
+      ]
+     ]
+    }
+   ],
+   "data": [
+    "parcels gains code_hash (never the code), code_expires_at, code_used_at nullable",
+    "settings: FREE_WINDOW_HOURS, default 48"
+   ],
+   "rules": [
+    "The code is six random digits from a cryptographic source, shown once in the drop response, and stored only as a hash.",
+    "`expires_at` = dropped_at + FREE_WINDOW_HOURS, computed from the injected clock, never from the system time inside the service.",
+    "Comparison of a presented code against the hash is constant-time.",
+    "The clock is a dependency (`Depends(get_clock)`) so a test can override it with a fixed time.",
+    "Both the database session and the clock are `Depends` dependencies, so a test overrides either without touching the route."
+   ],
+   "ac_user": [
+    [
+     "I book a drop",
+     "the door is chosen",
+     "I am shown a six-digit code and told how long it is valid"
+    ],
+    [
+     "the free window is 48 hours",
+     "I look at the code",
+     "it says it expires two days after the drop, not two days after now"
+    ]
+   ],
+   "ac_api": [
+    [
+     "a drop",
+     "POST /drops",
+     "201 includes a 6-digit `code` and `expires_at` exactly FREE_WINDOW_HOURS after dropped_at"
+    ],
+    [
+     "the parcel row",
+     "select it",
+     "code_hash is present and is not the code; no column contains the plain code"
+    ],
+    [
+     "the clock is fixed at T in tests",
+     "POST /drops",
+     "dropped_at equals T and expires_at equals T + window"
+    ],
+    [
+     "two drops",
+     "compare their codes",
+     "they differ, and neither is derivable from the parcel id"
+    ]
+   ],
+   "done": [
+    "Codes are issued, hashed, expiring, and testable under a fixed clock.",
+    "No log line and no response contains a plain code except the drop response itself."
+   ],
+   "try": {
+    "screen": "drop",
+    "do": "Book a drop and look at the green panel.",
+    "see": "A six-digit code and 'Valid 48 hours, until …' — the expiry is exactly 48 hours after the drop. The code is shown here once; the database holds only a keyed hash of it, and it never appears in a log line."
+   }
+  },
+  {
+   "id": "B-04",
+   "title": "Three ways to say no",
+   "scene": "Imran's last parcel is a 32-inch television carton and every large door is holding something. The notebook's answer was a shrug; the app has to say which size is free and why this one is not. At the keypad, a mistyped code and a code that has run out need their own answers too.",
+   "build": "Three refusals, each with its own code and its own status: too big for any free door, a code that never existed, a code whose window has passed — raised from a service function, never from inside the route.",
+   "follows": "The happy path is built. A locker wall is defined by what it refuses, and these three refusals are the first rows of its rule table.",
+   "story": {
+    "as": "courier",
+    "want": "be told which size is free when my parcel does not fit",
+    "so": "I know whether to wait, come back, or take it away"
+   },
+   "summary": "Three refusals, each with its own type and status, raised from the service and mapped once.",
+   "endpoints": [
+    {
+     "m": "POST",
+     "p": "/drops",
+     "q": null,
+     "req": null,
+     "res": null,
+     "codes": [
+      [
+       "409",
+       "/errors/no-door-free",
+       "no free door of that size; `free_sizes` lists the sizes that are free"
+      ]
+     ]
+    },
+    {
+     "m": "POST",
+     "p": "/pickups",
+     "q": null,
+     "req": {
+      "code": "482913"
+     },
+     "res": null,
+     "codes": [
+      [
+       "200",
+       "",
+       "not on this ticket"
+      ],
+      [
+       "404",
+       "/errors/no-such-code",
+       "the code does not exist in this tower"
+      ],
+      [
+       "404",
+       "/errors/code-expired",
+       "the code exists but its window has passed"
+      ]
+     ]
+    }
+   ],
+   "data": [
+    "no new tables"
+   ],
+   "rules": [
+    "Domain refusals are exceptions raised in the service layer (NoDoorFree, NoSuchCode, CodeExpired), never HTTP responses built inside a route.",
+    "One exception handler maps each domain exception to its status and problem type; the mapping table is the single source of truth.",
+    "`/errors/no-such-code` and `/errors/code-expired` both answer 404 so an attacker cannot tell a wrong code from an old one — but the `type` differs so the caretaker's screen can.",
+    "The exception → status mapping lives in one `exception_handler` registration; routes never build error responses."
+   ],
+   "ac_user": [
+    [
+     "every large door holds a parcel",
+     "I book a large parcel",
+     "I am refused and told which sizes are free"
+    ],
+    [
+     "I mistype a digit",
+     "I key the code",
+     "I am told the code does not exist"
+    ]
+   ],
+   "ac_api": [
+    [
+     "no free large door",
+     "POST /drops size L",
+     "409 /errors/no-door-free with free_sizes"
+    ],
+    [
+     "an unknown code",
+     "POST /pickups",
+     "404 /errors/no-such-code"
+    ],
+    [
+     "a code past expires_at",
+     "POST /pickups",
+     "404 /errors/code-expired"
+    ],
+    [
+     "any domain exception",
+     "it reaches the handler",
+     "the body has exactly type, title, status, detail and the fields the ticket names — no stack trace"
+    ]
+   ],
+   "done": [
+    "All three refusals are produced by the service and mapped by one handler.",
+    "A test per refusal asserts status and type.",
+    "No route contains `raise HTTPException` / `ResponseStatusException` for a domain rule."
+   ],
+   "try": {
+    "screen": "collect",
+    "do": "Key 000000. Then key the code from your message. (A code past its window is proven by the tests, which move the clock.)",
+    "see": "404 no-such-code, then 400 /errors/domain: on this ticket a right code is refused too, because opening the door is not part of this ticket. Each refusal has its own `type`. An expired code is also a 404, so a stranger cannot tell a wrong code from an old one, but its type is code-expired."
+   }
+  },
+  {
+   "id": "B-05",
+   "title": "The door opens, and the clock stops",
+   "scene": "Mrs Rao gets back on Sunday, keys in her code, and door D22 swings open. From that moment the wall must show D22 free for Imran's next parcel, with nobody resetting anything, and the same code must never open it again. The app also stamps how long the parcel waited: dwell time is the number the society judges the wall on.",
+   "build": "Accepting a valid code opens the door, frees it, and stamps dwell time on the parcel — all three in one transaction, so the wall can never show a freed door still holding a parcel.",
+   "follows": "The code is issued; this is the only ticket that consumes it. Until now the wall fills up and never empties.",
+   "story": {
+    "as": "resident",
+    "want": "key in my code and have the door open and free itself",
+    "so": "the next courier can use it and nobody has to reset anything"
+   },
+   "summary": "A valid code opens the door once, frees it, and stamps the parcel's dwell time — in one transaction.",
+   "endpoints": [
+    {
+     "m": "POST",
+     "p": "/pickups",
+     "q": null,
+     "req": {
+      "code": "482913"
+     },
+     "res": {
+      "parcel_id": "P017",
+      "door": "D22",
+      "opened_at": "2026-09-27T09:12:00Z",
+      "dwell_seconds": 158520
+     },
+     "codes": [
+      [
+       "200",
+       "",
+       "the door opened"
+      ],
+      [
+       "409",
+       "/errors/code-used",
+       "the code has already opened its door once"
+      ],
+      [
+       "404",
+       "/errors/no-such-code",
+       "the code does not exist in this tower"
+      ],
+      [
+       "404",
+       "/errors/code-expired",
+       "the code exists but its window has passed"
+      ]
+     ]
+    }
+   ],
+   "data": [
+    "parcels: state → collected, collected_at, dwell_seconds (collected_at − dropped_at)",
+    "parcels.code_used_at set; doors.current_parcel_id cleared"
+   ],
+   "rules": [
+    "Accepting a code, marking the parcel collected, clearing the door and stamping dwell are one transaction; the wall can never show a free door with an open parcel on it.",
+    "A code opens exactly one door exactly once; a second presentation is /errors/code-used.",
+    "Dwell is computed from the injected clock at pickup time.",
+    "The close is one session transaction: all writes or none; the test injects a failure after the first write and asserts nothing persisted."
+   ],
+   "ac_user": [
+    [
+     "my parcel is in door D22",
+     "I key my code",
+     "the door opens, I am told how long it waited, and the wall shows D22 free"
+    ],
+    [
+     "I opened it a minute ago",
+     "I key the code again",
+     "I am refused: the code was used"
+    ]
+   ],
+   "ac_api": [
+    [
+     "a holding parcel with a valid code",
+     "POST /pickups",
+     "200 with dwell_seconds; the parcel is collected and the door's current_parcel_id is null"
+    ],
+    [
+     "the same code",
+     "POST /pickups again",
+     "409 /errors/code-used and nothing changed"
+    ],
+    [
+     "a failure injected after the parcel update",
+     "POST /pickups",
+     "the transaction rolls back: parcel still holding, door still held"
+    ]
+   ],
+   "done": [
+    "Pickup is atomic and idempotent by refusal.",
+    "The dwell figure appears on the parcel and on the wall's holding count going down."
+   ],
+   "try": {
+    "screen": "collect",
+    "do": "Key the code from a drop you made.",
+    "see": "The door opens once, the parcel's dwell time is shown, and the wall shows that door free again. Parcel, door and event are written in one transaction."
+   }
+  },
+  {
+   "id": "B-06",
+   "title": "A notebook nobody can rewrite",
+   "scene": "Two months ago a parcel went missing and the notebook had been neatly tidied. Farida wants a record where a mistake is a new line, not an erased one.",
+   "build": "An append-only log: one row per transition — dropped, code issued, opened — written in the same transaction as the change itself, never updated and never deleted.",
+   "follows": "A parcel's life is now complete; this records it, and a log like this cannot be bolted on afterwards.",
+   "story": {
+    "as": "caretaker",
+    "want": "see every drop, code and opening in a record that cannot be edited",
+    "so": "when a parcel is disputed there is one account of what happened"
+   },
+   "summary": "Every transition is written to an append-only log in the same transaction, and can be read back per parcel.",
+   "endpoints": [
+    {
+     "m": "GET",
+     "p": "/parcels/{parcel_id}",
+     "q": null,
+     "req": null,
+     "res": {
+      "parcel_id": "P017",
+      "state": "collected",
+      "door": "D22",
+      "size_class": "M",
+      "flat": "302",
+      "dropped_at": "2026-09-25T13:10:00Z",
+      "events": [
+       {
+        "at": "2026-09-25T13:10:00Z",
+        "kind": "dropped",
+        "door": "D22"
+       },
+       {
+        "at": "2026-09-25T13:10:00Z",
+        "kind": "code_issued",
+        "expires_at": "2026-09-27T13:10:00Z"
+       },
+       {
+        "at": "2026-09-27T09:12:00Z",
+        "kind": "opened",
+        "door": "D22",
+        "dwell_seconds": 158520
+       }
+      ]
+     },
+     "codes": [
+      [
+       "200",
+       "",
+       "the parcel exists"
+      ],
+      [
+       "404",
+       "/errors/no-such-parcel",
+       ""
+      ]
+     ]
+    }
+   ],
+   "data": [
+    "events(id, tower_id, parcel_id, kind dropped|code_issued|opened|swept|rehomed|charged|notified, at, data json) — insert only",
+    "no UPDATE or DELETE is ever issued against events; enforce it (a database rule/trigger, or a repository with no update method and a test that proves it)"
+   ],
+   "rules": [
+    "An event is written inside the same transaction as the state change it records; a rolled-back drop leaves no `dropped` event.",
+    "Events carry ids and facts, never the plain code or the resident's name.",
+    "The parcel's `events` are returned in `at` order and are the only history the UI shows.",
+    "Event rows are inserted with a plain INSERT in the same session transaction as the change; the events model has no update path."
+   ],
+   "ac_user": [
+    [
+     "a parcel was dropped, then collected",
+     "I open that parcel",
+     "I see dropped, code issued and opened, in order, with times"
+    ],
+    [
+     "a parcel was dropped",
+     "I look for a way to edit or delete a line",
+     "there is none"
+    ]
+   ],
+   "ac_api": [
+    [
+     "a drop",
+     "it commits",
+     "exactly two events exist for it: dropped and code_issued"
+    ],
+    [
+     "a drop that fails after the insert",
+     "it rolls back",
+     "no event exists for it"
+    ],
+    [
+     "any event row",
+     "an UPDATE or DELETE is attempted",
+     "it is refused"
+    ],
+    [
+     "GET /parcels/P017",
+     "the parcel exists",
+     "events are in ascending `at` order"
+    ]
+   ],
+   "done": [
+    "Every transition writes an event in-transaction.",
+    "Immutability is enforced and tested, not assumed.",
+    "GET /parcels/{id} returns the ordered events."
+   ],
+   "try": {
+    "screen": "parcel",
+    "do": "Open P001 (or click a holding door on the wall and follow the parcel link on its card).",
+    "see": "The timeline: 'Dropped into door …', 'Code issued, valid 48 hours', 'Opened door … — waited …' — one line per transition, written in the same transaction as the change. The database refuses any UPDATE or DELETE on it."
+   }
+  },
+  {
+   "id": "B-07",
+   "title": "One file becomes an app",
+   "scene": "Imran's dispatcher asks for the API docs so their own system can book drops. What exists is one module and an error format that changes shape depending on which line raised it.",
+   "build": "Routers for doors, drops, pickups and parcels; one exception handler giving every refusal the same shape; tags, summaries and documented error responses, so /docs is something a courier's developer could work from.",
+   "follows": "The rules so far have piled into one file. This is where it stops being a script, and the error shape is settled here.",
+   "story": {
+    "as": "courier's dispatcher",
+    "want": "read one set of API docs where every refusal has the same shape",
+    "so": "our system can book drops without guessing what an error means"
+   },
+   "summary": "The app is split into modules with one error shape and API docs another team can build against.",
+   "endpoints": [
+    {
+     "m": "GET",
+     "p": "/docs",
+     "q": null,
+     "req": null,
+     "res": null,
+     "codes": [
+      [
+       "200",
+       "",
+       "renders every endpoint with its summary, tags (doors, drops, pickups, parcels) and each documented error response"
+      ]
+     ]
+    },
+    {
+     "m": "GET",
+     "p": "/openapi.json",
+     "q": null,
+     "req": null,
+     "res": null,
+     "codes": [
+      [
+       "200",
+       "",
+       "the machine-readable spec; every 4xx in the codes tables appears on the endpoint that can return it"
+      ]
+     ]
+    }
+   ],
+   "data": [
+    "no new tables"
+   ],
+   "rules": [
+    "Routers: doors, drops, pickups, parcels — each in its own module under `lockerline/routers/`; the service and rules modules hold no FastAPI imports.",
+    "Exactly one exception handler produces every error body, including validation errors and unexpected exceptions (500 with a generic detail, no stack trace).",
+    "Every endpoint declares its error responses in the spec with an example body.",
+    "`APIRouter` per resource, mounted from one `app.py`; services and rules import nothing from FastAPI."
+   ],
+   "ac_user": [
+    [
+     "I am the courier company's developer",
+     "I open the docs page",
+     "I can see every call, what it needs, and every way it can refuse me, with examples"
+    ]
+   ],
+   "ac_api": [
+    [
+     "the app is running",
+     "GET the spec",
+     "each of /drops, /pickups, /parcels/{id}, /towers/{t}/doors is present with a summary and tag"
+    ],
+    [
+     "the spec",
+     "look at POST /drops",
+     "400, 409 and the validation status are documented with a problem+json example"
+    ],
+    [
+     "an unexpected exception in a handler",
+     "any request",
+     "500 problem+json, type `/errors/internal`, with a generic detail and a logged request id; no trace in the body"
+    ]
+   ],
+   "done": [
+    "The codebase is modular as described; a reviewer can find any rule without opening a route.",
+    "Docs render and list documented errors for every endpoint.",
+    "One handler; no route builds its own error body."
+   ],
+   "try": {
+    "screen": "api",
+    "do": "Press Send on any endpoint, then open /docs.",
+    "see": "Every endpoint from the live OpenAPI spec with every refusal it documents. Routers per resource, services with no FastAPI import, one handler for every error shape."
+   }
+  },
+  {
+   "id": "B-08",
+   "title": "The rule table, and then the rule changes",
+   "scene": "The society votes to halve the free window: forty-eight hours becomes twenty-four. Farida's real question is whether anything else moved when it did.",
+   "build": "A parametrised table of every refusal the wall can give, driven through the test client with the clock overridden — then change the window to 24 hours and watch exactly one row of the table move.",
+   "follows": "The refusals exist and time can be moved. Only now can a rule be changed with evidence instead of hope.",
+   "story": {
+    "as": "caretaker",
+    "want": "change the free window from 48 hours to 24 and see exactly which rules moved",
+    "so": "a policy change does not quietly break a rule nobody was thinking about"
+   },
+   "summary": "A parametrised rule table covers every refusal, and the free window can change without breaking anything else.",
+   "endpoints": [
+    {
+     "m": "GET",
+     "p": "/settings",
+     "q": null,
+     "req": null,
+     "res": {
+      "free_window_hours": 48,
+      "sizes": [
+       "S",
+       "M",
+       "L"
+      ]
+     },
+     "codes": [
+      [
+       "200",
+       "",
+       "current settings, read-only"
+      ]
+     ]
+    }
+   ],
+   "data": [
+    "no new tables; FREE_WINDOW_HOURS is read from settings at start-up"
+   ],
+   "rules": [
+    "The rule table is one parametrised test with one row per case: fits / right size gone (refused) / nothing fits / code used / code expired / inside the window / past the window. Each row names given, action, expected status and type.",
+    "Rows come from a CSV or a list passed to `pytest.mark.parametrize`; the clock is overridden with `dependency_overrides`.",
+    "Changing FREE_WINDOW_HOURS from 48 to 24 changes the outcome of exactly the expiry rows and no others; the table proves it.",
+    "The table is one `@pytest.mark.parametrize` over `TestClient` with `dependency_overrides` for the clock; the rule change is a settings override in the same test module."
+   ],
+   "ac_user": [
+    [
+     "the window is 48 hours",
+     "the society changes it to 24",
+     "a parcel dropped after the change cannot be collected 30 hours later, codes already handed out keep their 48 hours, and nothing else about the wall changed"
+    ]
+   ],
+   "ac_api": [
+    [
+     "the rule table",
+     "it runs",
+     "every refusal type the wall can give so far appears in at least one row, and every row passes"
+    ],
+    [
+     "FREE_WINDOW_HOURS=24",
+     "the table runs",
+     "only the rows tagged `window` change outcome"
+    ],
+    [
+     "GET /settings",
+     "any time",
+     "200 with the live free_window_hours"
+    ]
+   ],
+   "done": [
+    "The table exists, is parametrised, and covers all six refusal/happy rows.",
+    "A second run with the window at 24 shows the documented rows moving and no others.",
+    "GET /settings exists and the UI reads it."
+   ],
+   "try": {
+    "screen": "rules",
+    "do": "Switch the free window from 48 to 24 hours.",
+    "see": "Exactly one row of the rule table moves (inside_window_30h: 200 → 404). These are the rows tests/rules.csv runs at both windows with the clock overridden."
+   }
+  },
+  {
+   "id": "B-09",
+   "title": "It runs on a machine that isn't yours",
+   "scene": "Vikram has an old mini-PC in the society office. He wants the parcel room running on it, and he is not going to install Python.",
+   "build": "A Dockerfile for the app, an image built and run with a mapped port, and HOST=0.0.0.0 so it answers from outside the container.",
+   "follows": "The app is finished and tested; this is the first day it leaves your laptop.",
+   "story": {
+    "as": "society secretary",
+    "want": "run the parcel room from a single image on the office machine",
+    "so": "I do not have to install a development environment to use it"
+   },
+   "summary": "The app builds into an image and runs in a container, answering on a mapped port from outside.",
+   "endpoints": [
+    {
+     "m": "GET",
+     "p": "/healthz",
+     "q": null,
+     "req": null,
+     "res": {
+      "status": "ok"
+     },
+     "codes": [
+      [
+       "200",
+       "",
+       "the process is up and can reach its database"
+      ]
+     ]
+    }
+   ],
+   "data": [
+    "no new tables"
+   ],
+   "rules": [
+    "Dockerfile: `python:3.12-slim`, dependencies installed from a lock file, `HOST=0.0.0.0`, `PORT=8080`, `CMD uvicorn lockerline.app:app --host 0.0.0.0 --port 8080`.",
+    "`docker build -t lockerline .` and `docker run -p 8080:8080 lockerline` are the only two commands needed; the README shows them.",
+    "The container answers GET on the health path from the host."
+   ],
+   "ac_user": [
+    [
+     "I am the society secretary with no Python or Java installed",
+     "I run the two commands from the README",
+     "the wall opens in my browser on port 8080"
+    ]
+   ],
+   "ac_api": [
+    [
+     "a clean machine with Docker",
+     "docker build",
+     "it succeeds with no network access at run time"
+    ],
+    [
+     "the container running",
+     "curl the health path from the host",
+     "200"
+    ],
+    [
+     "the container running",
+     "GET /towers/A/doors from the host",
+     "200 with 48 doors"
+    ]
+   ],
+   "done": [
+    "Image builds; container serves the API on the mapped port; README documents both commands."
+   ],
+   "try": {
+    "screen": "runtime",
+    "do": "Read the health dot and the image line, then build and run your Dockerfile with the docker commands under 'How it runs'.",
+    "see": "The same wall answers on port 8080 from a container bound to 0.0.0.0 — no Python installed on the machine that runs it. The dot is green only when /healthz reached the database."
+   }
+  },
+  {
+   "id": "B-10",
+   "title": "It survives being switched off",
+   "scene": "Vikram unplugs the mini-PC to vacuum behind it. Every parcel in the wall disappears.",
+   "build": "A volume that keeps the data, configuration through an env-file rather than baked into the image, a .dockerignore, logs to stdout — and the README that walks one parcel from drop to collection.",
+   "follows": "The image ran once. This is what turns it into something Vikram can be handed.",
+   "story": {
+    "as": "society secretary",
+    "want": "restart or unplug the machine without losing the parcels",
+    "so": "a power cut is an inconvenience rather than an incident"
+   },
+   "summary": "Data survives `docker rm`, configuration comes from an env-file, logs go to stdout, and the README hands it over.",
+   "endpoints": [],
+   "data": [
+    "the SQLite file lives on a named volume mounted at /data; DATABASE_URL=sqlite:////data/lockerline.db",
+    ".dockerignore excludes tests, .git, local databases and virtualenvs / build output"
+   ],
+   "rules": [
+    "Every setting (database path, FREE_WINDOW_HOURS, HOST, PORT) is read from environment variables via `--env-file`; nothing is baked into the image.",
+    "All logs go to stdout/stderr, one line per event; no log file inside the container.",
+    "README: how to build, run with a volume and env-file, and a walkthrough of one parcel from drop to collection with the exact curl calls.",
+    "Settings are read by pydantic-settings from the environment; the env-file is the only configuration input."
+   ],
+   "ac_user": [
+    [
+     "parcels are on the wall",
+     "the secretary unplugs the machine and starts the container again",
+     "every parcel is still there"
+    ],
+    [
+     "the secretary wants a 24-hour window",
+     "they change one line in the env-file and restart",
+     "the rule book shows 24 and no image was rebuilt"
+    ]
+   ],
+   "ac_api": [
+    [
+     "a drop was made",
+     "docker rm the container and run it again with the same volume",
+     "GET /parcels/{id} still returns it"
+    ],
+    [
+     "FREE_WINDOW_HOURS=24 in the env-file",
+     "the container starts",
+     "GET /settings shows 24"
+    ],
+    [
+     "the container",
+     "docker logs",
+     "every request line and every event appears there; no file was written under /app"
+    ]
+   ],
+   "done": [
+    "Volume, env-file, .dockerignore, stdout logging and README all in place and each verified by the acceptance rows above."
+   ],
+   "try": {
+    "screen": "runtime",
+    "do": "Run the container with the volume and the env-file and book a parcel. Under 'Restart the container' press Before restart, run the two commands shown, wait for the health dot, then press After restart.",
+    "see": "Unchanged: the same holding doors and parcel ids — the database lives on the volume. Change FREE_WINDOW_HOURS in the env-file and restart: the rule book shows the new window, no rebuild. Logs are on stdout (`docker logs`), one line per request and per event."
+   }
+  }
+ ]
+}
