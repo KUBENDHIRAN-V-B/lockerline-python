@@ -16,7 +16,6 @@ from .settings import Settings
 
 STATIC = Path(__file__).parent / "static"
 
-
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
     engine = make_engine(settings.database_url)
@@ -29,12 +28,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         engine.dispose()
 
-    app = FastAPI(title="LockerLine", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="LockerLine", version="0.3.0", lifespan=lifespan)
     app.state.settings = settings
     app.state.engine = engine
     app.state.sessionmaker = make_sessionmaker(engine)
-
     install_handlers(app)
+
     for router in (doors.router, drops_router.router, parcels_router.router):
         app.include_router(router)
 
@@ -45,6 +44,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return FileResponse(STATIC / "index.html")
 
     return app
-
 
 app = create_app()
