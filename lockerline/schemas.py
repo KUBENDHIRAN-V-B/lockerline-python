@@ -48,3 +48,6 @@ class DoorsOut(BaseModel):
     tower: str
     free: int = Field(description="Number of free doors among the returned doors")
     doors: list[DoorListItem]
+
+class PickupRequest(BaseModel):
+    code: str = Field(pattern=r"^\d{6}$")

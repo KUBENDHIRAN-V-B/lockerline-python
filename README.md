@@ -9,7 +9,7 @@ A bank of 48 parcel lockers in an apartment block: couriers drop, residents coll
 - [x] Ticket 1 · Forty-eight doors, and a wall you can look at
 - [x] Ticket 2 · A courier asks for a door
 - [x] Ticket 3 · The code that dies at midnight
-- [ ] Ticket 4 · Three ways to say no
+- [x] Ticket 4 · Three ways to say no
 - [ ] Ticket 5 · The door opens, and the clock stops
 - [ ] Ticket 6 · A notebook nobody can rewrite
 - [ ] Ticket 7 · One file becomes an app
