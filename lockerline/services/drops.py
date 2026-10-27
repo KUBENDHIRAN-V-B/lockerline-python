@@ -1,4 +1,4 @@
-"""Ticket 2/3 parcel booking and pickup-code issuance."""
+"""Door choice, parcel, code and events are one transaction."""
 
 from datetime import timedelta, timezone
 import hashlib
@@ -13,6 +13,7 @@ from ..clock import Clock, as_utc
 from ..errors import NoDoorFree, NoSuchFlat, NoSuchTower
 from ..models import Door, Parcel, Resident, Tower
 from ..schemas import DropOut, DropRequest
+from . import events
 
 SIZE_ORDER = ("S", "M", "L")
 
@@ -158,6 +159,8 @@ def create_drop(
         session.flush()
 
         door.current_parcel_id = parcel.id
+        events.record(session, tower.id, parcel.id, "dropped", dropped_at, {"door": door.no})
+        events.record(session, tower.id, parcel.id, "code_issued", dropped_at, {"expires_at": expires_at.strftime("%Y-%m-%dT%H:%M:%SZ")})
         session.commit()
 
         return DropOut(

@@ -7,6 +7,7 @@ from ..clock import Clock, as_utc
 from ..errors import CodeExpired, CodeUsed, NoSuchCode, NoSuchTower
 from ..models import Door, Parcel, Tower
 from ..schemas import PickupRequest
+from . import events
 from .drops import hash_pickup_code
 
 def pickup(
@@ -44,6 +45,7 @@ def pickup(
         parcel.dwell_seconds = dwell
         parcel.code_used_at = now
         door.current_parcel_id = None
+        events.record(session, parcel.tower_id, parcel.id, "opened", now, {"door": door.no, "dwell_seconds": dwell})
         session.commit()
         return parcel, door
     except Exception:
