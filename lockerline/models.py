@@ -39,3 +39,5 @@ class Parcel(Base):
     code_hash: Mapped[str] = mapped_column(String(64))
     code_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     code_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    collected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dwell_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)

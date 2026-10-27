@@ -61,6 +61,12 @@ class CodeExpired(DomainError):
     title = "Pickup code expired"
 
 
+class CodeUsed(DomainError):
+    status = 409
+    type = "/errors/code-used"
+    title = "This code has already opened its door"
+
+
 VALIDATION_BODY = (
     422,
     "/errors/validation",

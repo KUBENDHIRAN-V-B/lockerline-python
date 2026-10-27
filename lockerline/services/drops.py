@@ -78,8 +78,11 @@ def _new_unique_code(
     secret: str,
 ) -> tuple[str, str]:
     """Generate a six-digit code and its unique stored hash."""
+    # A code may be reused once its previous parcel has been collected.
     existing_hashes = set(
-        session.scalars(select(Parcel.code_hash))
+        session.scalars(
+            select(Parcel.code_hash).where(Parcel.code_used_at.is_(None))
+        )
     )
 
     for _ in range(100):

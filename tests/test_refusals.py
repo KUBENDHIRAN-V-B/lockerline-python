@@ -26,6 +26,14 @@ def test_no_door_free(client):
     )
 
 
+def test_code_used(client):
+    code = drop(client)["code"]
+    first = client.post("/pickups", json={"code": code})
+    assert first.status_code == 200
+    second = client.post("/pickups", json={"code": code})
+    assert (second.status_code, second.json()["type"]) == (409, "/errors/code-used")
+
+
 def test_no_such_code(client):
     r = client.post("/pickups", json={"code": "000000"})
     assert (r.status_code, r.json()["type"]) == (

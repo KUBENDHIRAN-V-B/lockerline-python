@@ -1,32 +1,19 @@
-
-"""Pickup-code validation endpoint."""
-
+"""Pickup endpoint: collect a parcel and free its door."""
 from fastapi import APIRouter
 
-from ..schemas import PickupRequest
-from ..services.pickups import validate_pickup_code
+from ..ids import parcel_public
+from ..schemas import PickupOut, PickupRequest
+from ..services.pickups import pickup
 from . import ClockDep, SessionDep, SettingsDep
 
 router = APIRouter(tags=["pickups"])
 
-
-@router.post("/pickups")
-def validate_pickup(
-    body: PickupRequest,
-    session: SessionDep,
-    clock: ClockDep,
-    settings: SettingsDep,
-):
-    # IMPORTANT: use the same secret configured for POST /drops.
-    parcel = validate_pickup_code(
-        session=session,
-        request=body,
-        clock=clock,
-        code_secret=settings.code_secret,
+@router.post("/pickups", response_model=PickupOut)
+def collect_pickup(body: PickupRequest, session: SessionDep, clock: ClockDep, settings: SettingsDep) -> PickupOut:
+    parcel, door = pickup(session, body, clock, settings.code_secret)
+    return PickupOut(
+        parcel_id=parcel_public(parcel.id),
+        door=door.no,
+        opened_at=parcel.collected_at,
+        dwell_seconds=parcel.dwell_seconds,
     )
-
-    # Ticket 4 validates only; it does not collect the parcel.
-    return {
-        "valid": True,
-        "parcel_id": f"P{parcel.id:03d}",
-    }
