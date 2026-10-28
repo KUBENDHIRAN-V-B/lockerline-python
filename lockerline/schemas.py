@@ -72,3 +72,8 @@ class PickupOut(BaseModel):
     door: str
     opened_at: UtcZ
     dwell_seconds: int
+
+
+class SettingsOut(BaseModel):
+    free_window_hours: int
+    sizes: list[SizeClass]

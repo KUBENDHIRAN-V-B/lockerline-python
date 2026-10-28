@@ -17,6 +17,7 @@ OPERATIONS = {
     ("post", "/drops"): ("drops", {"201", "400", "409", "422", "500"}),
     ("post", "/pickups"): ("pickups", {"200", "404", "409", "422", "500"}),
     ("get", "/parcels/{parcel_id}"): ("parcels", {"200", "404", "500"}),
+    ("get", "/settings"): ("settings", {"200", "500"}),
 }
 
 
@@ -68,6 +69,7 @@ def test_spec_documents_exactly_what_each_operation_can_answer(client):
             for ex in _examples(response):
                 assert {"type", "title", "status", "detail"} <= set(ex), (method, path, status, ex)
                 assert str(ex["status"]) == status and ex["type"].startswith("/errors/")
+    assert _examples(spec["paths"]["/settings"]["get"]["responses"]["500"])[0]["type"] == "/errors/internal"
     schemas = spec["components"]["schemas"]
     assert "HTTPValidationError" not in schemas and "ValidationError" not in schemas
 

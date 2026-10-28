@@ -1,0 +1,11 @@
+case,tag,setup,action,status_48,type_48,status_24,type_24
+fits,drop,,drop M 302,201,,201,
+right_size_gone,drop,fill M,drop M 302,409,/errors/no-door-free,409,/errors/no-door-free
+nothing_fits,drop,fill S;fill M;fill L,drop L 302,409,/errors/no-door-free,409,/errors/no-door-free
+unknown_flat,drop,,drop M 999,400,/errors/no-such-flat,400,/errors/no-such-flat
+malformed,drop,,drop XL 302,422,/errors/validation,422,/errors/validation
+code_used,pickup,drop;pickup,pickup,409,/errors/code-used,409,/errors/code-used
+unknown_code,pickup,,pickup 000000,404,/errors/no-such-code,404,/errors/no-such-code
+inside_window_30h,window,drop;advance 30,pickup,200,,404,/errors/code-expired
+past_window_60h,window,drop;advance 60,pickup,404,/errors/code-expired,404,/errors/code-expired
+just_inside_20h,window,drop;advance 20,pickup,200,,200,

@@ -13,7 +13,7 @@ A bank of 48 parcel lockers in an apartment block: couriers drop, residents coll
 - [x] Ticket 5 · The door opens, and the clock stops
 - [x] Ticket 6 · A notebook nobody can rewrite
 - [x] Ticket 7 · One file becomes an app
-- [ ] Ticket 8 · The rule table, and then the rule changes
+- [x] Ticket 8 · The rule table, and then the rule changes
 - [ ] Ticket 9 · It runs on a machine that isn't yours
 - [ ] Ticket 10 · It survives being switched off
 

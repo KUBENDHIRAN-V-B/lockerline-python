@@ -21,6 +21,7 @@ from .routers import doors
 from .routers import drops as drops_router
 from .routers import parcels as parcels_router
 from .routers import pickups as pickups_router
+from .routers import settings as settings_router
 from .services.seed import seed
 from .settings import Settings
 
@@ -103,7 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return response
 
     install_handlers(app)
-    for router in (doors.router, drops_router.router, parcels_router.router, pickups_router.router):
+    for router in (doors.router, drops_router.router, parcels_router.router, pickups_router.router, settings_router.router):
         app.include_router(router)
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
