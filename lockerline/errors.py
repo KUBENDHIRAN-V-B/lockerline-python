@@ -73,6 +73,12 @@ VALIDATION_BODY = (
     "The request body is not valid",
 )
 
+INTERNAL = (
+    500,
+    "/errors/internal",
+    "Something went wrong",
+)
+
 VALIDATION_PARAMS = (
     400,
     "/errors/validation",

@@ -1,13 +1,31 @@
 """Courier parcel drop endpoint."""
 from fastapi import APIRouter, Request, Response, status
 
+from ..errors import NoDoorFree, NoSuchFlat
+from ..handlers import VALIDATION_RESPONSE, responses
 from ..schemas import DropOut, DropRequest
 from ..services import drops
 from . import ClockDep, SessionDep
 
 router = APIRouter(tags=["drops"])
 
-@router.post("/drops", response_model=DropOut, status_code=status.HTTP_201_CREATED)
+CREATED = {
+    201: {"description": "A door was chosen; the parcel is at the Location given",
+          "headers": {"Location": {"schema": {"type": "string"}, "description": "The new parcel, e.g. /parcels/P017"}}}}
+
+
+@router.post(
+    "/drops", response_model=DropOut, status_code=status.HTTP_201_CREATED,
+    summary="Book a door for a parcel",
+    responses={
+        **CREATED,
+        **responses(
+            (NoSuchFlat, "Flat '999' does not exist in tower A"),
+            (NoDoorFree, "No free L door", {"free_sizes": ["S", "M"]}),
+        ),
+        **VALIDATION_RESPONSE,
+    },
+)
 def create_drop(
     body: DropRequest,
     response: Response,
