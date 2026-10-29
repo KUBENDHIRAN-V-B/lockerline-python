@@ -21,7 +21,7 @@ router = APIRouter(tags=["pickups"])
     ), **VALIDATION_RESPONSE},
 )
 def collect_pickup(body: PickupRequest, session: SessionDep, clock: ClockDep, settings: SettingsDep) -> PickupOut:
-    parcel, door = pickup(session, body, clock, settings.code_secret)
+    parcel, door = pickup(session, body, clock, settings.code_hash_key)
     return PickupOut(
         parcel_id=parcel_public(parcel.id),
         door=door.no,

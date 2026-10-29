@@ -39,7 +39,7 @@ def create_drop(
         body,
         clock,
         free_window_hours=settings.free_window_hours,
-        code_secret=settings.code_secret,
+        code_secret=settings.code_hash_key,
     )
     response.headers["Location"] = f"/parcels/{result.parcel_id}"
     return result

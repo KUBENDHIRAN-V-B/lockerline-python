@@ -1,6 +1,8 @@
-"""Create the API: one error handler, a request id on every request."""
+"""Create the API: one error handler, a request id on every request and every log line on stdout."""
 import copy
 import json
+import logging
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -34,6 +36,21 @@ TAGS = [
     {"name": "settings", "description": "The rules in force, and health"},
 ]
 DESCRIPTION = "A bank of 48 parcel lockers: couriers drop, residents collect with a code that expires."
+
+log = logging.getLogger("lockerline")
+
+
+def configure_logging() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        stream=sys.stdout,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        force=True,
+    )
+    # one line per request: the app's own request line below replaces uvicorn's access line
+    logging.getLogger("uvicorn.access").disabled = True
+
+
 
 
 def honest_openapi(app: FastAPI):
@@ -74,6 +91,7 @@ def honest_openapi(app: FastAPI):
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Create and configure the LockerLine application."""
+    configure_logging()
     settings = settings or Settings()
     engine = make_engine(settings.database_url)
 
@@ -83,6 +101,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         init_db(engine)
         with app.state.sessionmaker() as session:
             seed(session, settings.seed_dir)
+        log.info(
+            "ready host=%s port=%s database=%s free_window_hours=%s",
+            settings.host, settings.port, settings.database_url, settings.free_window_hours,
+        )
         yield
         engine.dispose()
 
@@ -100,7 +122,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.middleware("http")
     async def request_id_and_log(request: Request, call_next):
         request.state.request_id = uuid.uuid4().hex[:12]
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            # the one 500 handler answers; the request still gets its one line
+            log.info(
+                "request method=%s path=%s status=500 request_id=%s",
+                request.method, request.url.path, request.state.request_id,
+            )
+            raise
+        log.info(
+            "request method=%s path=%s status=%s request_id=%s",
+            request.method, request.url.path, response.status_code, request.state.request_id,
+        )
         return response
 
     install_handlers(app)

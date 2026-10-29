@@ -16,7 +16,7 @@ T0 = datetime(2026, 9, 25, 13, 10, tzinfo=timezone.utc)
 def make_settings(tmp_path: Path, **overrides) -> Settings:
     db = (tmp_path / "lockerline-test.db").as_posix()
     values = {"database_url": f"sqlite:///{db}", "seed_dir": str(ROOT / "seed"), "free_window_hours": 48,
-              "code_hash_key": "test-key"}
+              "code_hash_key": "test-key-long-enough"}
     values.update(overrides)
     return Settings(_env_file=None, **values)
 

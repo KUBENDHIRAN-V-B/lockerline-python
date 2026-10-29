@@ -66,7 +66,7 @@ def test_settings_endpoint_shows_the_live_window(tmp_path, clock):
 
 
 def test_the_rule_book_shows_the_rows_the_tests_run():
-    """The Rule book screen renders a copy of tests/rules.csv; the copy must equal the
+    """The Rule book screen renders a copy of tests/rules.csv (the image carries no tests/); the copy must equal the
     file: same cases, tags, setup, action and expected status/type at both windows, in the same order."""
     source = (Path(__file__).resolve().parent.parent / "lockerline" / "static" / "app.js").read_text(encoding="utf-8")
     block = re.search(r"var RULES = (\[.*?\n  \]);", source, re.DOTALL)
